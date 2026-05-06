@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CIPA - Sistema de Votação</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-md w-full space-y-8">
+            <!-- Logo/Header -->
+            <div class="text-center">
+                <h2 class="mt-6 text-3xl font-extrabold text-gray-900">CIPA</h2>
+                <p class="mt-2 text-sm text-gray-600">Sistema de Votação</p>
+            </div>
+
+            <!-- Login Form -->
+            <form class="mt-8 space-y-6" onsubmit="fazerLogin(event)">
+                <div class="rounded-md shadow-sm -space-y-px">
+                    <div>
+                        <label for="username" class="sr-only">Usuário</label>
+                        <input
+                            id="username"
+                            name="username"
+                            type="text"
+                            autocomplete="username"
+                            required
+                            class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                            placeholder="Usuário"
+                        />
+                    </div>
+                    <div>
+                        <label for="password" class="sr-only">Senha</label>
+                        <input
+                            id="password"
+                            name="password"
+                            type="password"
+                            autocomplete="current-password"
+                            required
+                            class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                            placeholder="Senha"
+                        />
+                    </div>
+                </div>
+
+                <div id="erro-login" class="rounded-md bg-red-50 p-4 hidden">
+                    <p class="text-sm font-medium text-red-800" id="erro-mensagem"></p>
+                </div>
+
+                <div>
+                    <button
+                        type="submit"
+                        class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                        Entrar
+                    </button>
+                </div>
+            </form>
+
+            <!-- Demo Info -->
+            <div class="rounded-md bg-blue-50 p-4" hidden>
+                <p class="text-sm text-blue-800">
+                    <strong>Demo:</strong> Usuário: <code class="bg-white px-2 py-1 rounded">admin</code> | Senha: <code class="bg-white px-2 py-1 rounded">admin123</code>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+         const API_URL = 'http://191.252.202.20:5005/api';
+
+        async function fazerLogin(event) {
+            event.preventDefault();
+
+            const username = document.getElementById('username').value;
+            const senha = document.getElementById('password').value;
+            const erroDiv = document.getElementById('erro-login');
+            const erroMsg = document.getElementById('erro-mensagem');
+
+            try {
+                const response = await axios.post(`${API_URL}/auth/login`, {
+                    username,
+                    senha
+                });
+
+                // Salva token e redireciona
+                localStorage.setItem('token', response.data.token);
+                localStorage.setItem('username', response.data.username);
+                if  (username == 'admin') {
+                            window.location.href = 'admin.html';
+                } else {
+                            window.location.href = 'supervisao.html';
+                }
+        
+            } catch (error) {
+                erroMsg.textContent = error.response?.data?.erro || 'Erro ao fazer login';
+                erroDiv.classList.remove('hidden');
+            }
+        }
+    </script>
+</body>
+</html>

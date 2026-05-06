@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Supervisão</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        .img-zoomable {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            cursor: pointer;
+            display: inline-block;
+            transform-origin: center center;
+        }
+
+        .img-zoomable:hover,
+        .img-zoomable.zoomed {
+            transform: scale(1.6);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+            z-index: 10;
+            position: relative;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <nav class="bg-white shadow">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <h1 class="text-2xl font-bold text-blue-600">CIPA Supervisão</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-gray-700" id="username-display"></span>
+                    <button onclick="sair()" class="text-red-600 hover:text-red-800">Sair</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 gap-8">
+            <!-- Abas -->
+            <div class="flex space-x-4 border-b border-gray-200">
+                <button onclick="mostrarAba('candidatos')" class="aba-btn px-4 py-2 border-b-2 border-transparent text-gray-600 hover:text-gray-900" data-aba="candidatos">Candidatos</button>
+                <button onclick="mostrarAba('eleitores')" class="aba-btn px-4 py-2 border-b-2 border-transparent text-gray-600 hover:text-gray-900" data-aba="eleitores">Eleitores</button>
+                <button onclick="mostrarAba('resultado')" class="aba-btn px-4 py-2 border-b-2 border-transparent text-gray-600 hover:text-gray-900" data-aba="resultado">Resultado</button>
+           
+            </div>
+
+
+
+            <!-- ABA: Candidatos -->
+            <div id="aba-candidatos" class="aba-conteudo hidden">
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <table class="w-full">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-sm font-semibold">Número</th>
+                                <th class="px-6 py-3 text-left text-sm font-semibold">Foto</th>
+                                <th class="px-6 py-3 text-left text-sm font-semibold">Nome</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lista-candidatos" class="divide-y divide-gray-200">
+                            <tr class="text-center py-4">
+                                <td colspan="3" class="text-gray-500">Carregando...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ABA: Eleitores -->
+            <div id="aba-eleitores" class="aba-conteudo hidden">
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <table class="w-full">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-sm font-semibold">CPF</th>
+                                <th class="px-6 py-3 text-left text-sm font-semibold">Nome</th>
+                                <th class="px-6 py-3 text-left text-sm font-semibold">Já Votou</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lista-eleitores" class="divide-y divide-gray-200">
+                            <tr class="text-center py-4">
+                                <td colspan="3" class="text-gray-500">Carregando...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+      <div id="aba-resultado" class="aba-conteudo hidden space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <p class="text-gray-600">Total de Votos</p>
+                        <p class="text-3xl font-bold" id="total-votos">0</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <p class="text-gray-600">Total de Eleitores</p>
+                        <p class="text-3xl font-bold" id="total-eleitores">0</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <p class="text-gray-600">Comparecimento</p>
+                        <p class="text-3xl font-bold" id="comparecimento">0%</p>
+                    </div>
+                </div>
+
+            
+            </div>
+        </div>
+    </div>
+
+    <script>
+         const API_URL = 'http://191.252.202.20:5005/api';
+        let token = localStorage.getItem('token');
+
+        if (!token) {
+            window.location.href = 'index.html';
+        }
+
+        document.getElementById('username-display').textContent = localStorage.getItem('username') || 'Admin';
+
+        const config = {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        };
+
+        function mostrarAba(abaName) {
+            // Esconde todas as abas
+            document.querySelectorAll('.aba-conteudo').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.aba-btn').forEach(el => {
+                el.classList.remove('border-blue-500', 'text-blue-600');
+                el.classList.add('border-transparent', 'text-gray-600');
+            });
+
+            // Mostra aba selecionada
+            document.getElementById(`aba-${abaName}`).classList.remove('hidden');
+            document.querySelector(`[data-aba="${abaName}"]`).classList.add('border-blue-500', 'text-blue-600');
+
+            if (abaName === 'candidatos') carregarCandidatos();
+            if (abaName === 'eleitores') carregarEleitores();
+            if (abaName === 'resultado') carregarResultado();
+        }
+
+        async function uploadEleitores() {
+            const file = document.getElementById('arquivo-eleitores').files[0];
+            if (!file) {
+                alert('Selecione um arquivo');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const statusDiv = document.getElementById('status-eleitores');
+            statusDiv.textContent = 'Enviando...';
+            statusDiv.className = 'text-sm text-blue-600';
+
+            try {
+                const response = await axios.post(`${API_URL}/admin/upload-eleitores`, formData, config);
+                statusDiv.textContent = `✓ ${response.data.mensagem}`;
+                statusDiv.className = 'text-sm text-green-600';
+            } catch (error) {
+                statusDiv.textContent = `✗ ${error.response?.data?.erro || 'Erro ao enviar'}`;
+                statusDiv.className = 'text-sm text-red-600';
+            }
+        }
+
+        async function uploadCandidatos() {
+            const file = document.getElementById('arquivo-candidatos').files[0];
+            if (!file) {
+                alert('Selecione um arquivo');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const statusDiv = document.getElementById('status-candidatos');
+            statusDiv.textContent = 'Enviando...';
+            statusDiv.className = 'text-sm text-blue-600';
+
+            try {
+                const response = await axios.post(`${API_URL}/admin/upload-candidatos`, formData, config);
+                statusDiv.textContent = `✓ ${response.data.mensagem}`;
+                statusDiv.className = 'text-sm text-green-600';
+            } catch (error) {
+                statusDiv.textContent = `✗ ${error.response?.data?.erro || 'Erro ao enviar'}`;
+                statusDiv.className = 'text-sm text-red-600';
+            }
+        }
+
+        async function carregarCandidatos() {
+            try {
+                const response = await axios.get(`${API_URL}/admin/candidatos`, config);
+                const tbody = document.getElementById('lista-candidatos');
+                tbody.innerHTML = response.data.candidatos.map(c => `
+                    <tr>
+                        <td class="px-6 py-4 text-sm">${c.numero}</td>
+                        <td class="px-6 py-4 text-sm overflow-visible">
+                            ${c.fotoUrl ? `<img src="${c.fotoUrl}" alt="Foto do candidato" class="h-10 w-10 object-cover rounded-full img-zoomable" onclick="toggleZoom(this)" />` : '<span class="text-gray-500">-</span>'}
+                        </td>
+                        <td class="px-6 py-4 text-sm">${c.nome}</td>
+                       
+                    </tr>
+                `).join('');
+            } catch (error) {
+                document.getElementById('lista-candidatos').innerHTML = '<tr><td colspan="3" class="text-center py-4 text-red-600">Erro ao carregar</td></tr>';
+            }
+        }
+
+        async function carregarEleitores() {
+            try {
+                const response = await axios.get(`${API_URL}/admin/eleitores`, config);
+                const tbody = document.getElementById('lista-eleitores');
+                tbody.innerHTML = response.data.eleitores.map(e => `
+                    <tr>
+                        <td class="px-6 py-4 text-sm">${e.cpf}</td>
+                        <td class="px-6 py-4 text-sm">${e.nome}</td>
+                        <td class="px-6 py-4 text-sm">${e.jaVotou ? '<span class="text-green-600">✓ Sim</span>' : '<span class="text-gray-500">Não</span>'}</td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                document.getElementById('lista-eleitores').innerHTML = '<tr><td colspan="3" class="text-center py-4 text-red-600">Erro ao carregar</td></tr>';
+            }
+        }
+
+        async function carregarResultado() {
+            try {
+                const response = await axios.get(`${API_URL}/admin/resultado`, config);
+                const data = response.data;
+
+                document.getElementById('total-votos').textContent = data.totalVotos;
+                document.getElementById('total-eleitores').textContent = data.totalEleitores;
+                document.getElementById('comparecimento').textContent = data.percentualComparencia.toFixed(1) + '%';
+
+                const resultadoDiv = document.getElementById('resultado-candidatos');
+                resultadoDiv.innerHTML = data.resultados.map(r => `
+                    <div class="border-l-4 border-blue-500 pl-4 py-2">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="font-semibold">${r.numero} - ${r.nome}</p>
+                                <p class="text-sm text-gray-600">${r.totalVotos} votos</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-lg font-bold text-blue-600">${r.percentual.toFixed(1)}%</p>
+                            </div>
+                        </div>
+                        <div class="mt-2 bg-gray-200 rounded-full h-2">
+                            <div class="bg-blue-600 h-2 rounded-full" style="width: ${r.percentual}%"></div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                document.getElementById('resultado-candidatos').innerHTML = '<p class="text-red-600">Erro ao carregar resultado</p>';
+            }
+        }
+
+        function toggleZoom(img) {
+            img.classList.toggle('zoomed');
+        }
+
+        function sair() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('username');
+            window.location.href = 'index.html';
+        }
+
+        // Carrega candidatos ao abrir a página
+        mostrarAba('upload');
+    </script>
+</body>
+</html>

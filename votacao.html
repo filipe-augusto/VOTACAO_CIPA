@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Votação - CIPA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <div class="max-w-4xl mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-900 mb-2">CIPA </h1>
+            <p class="text-xl text-gray-600">Sistema de Votação</p>
+        </div>
+
+        <!-- Etapa 1: Validar CPF -->
+        <div id="etapa-validacao" class="bg-white rounded-lg shadow-lg p-8 max-w-2xl mx-auto">
+            <h2 class="text-2xl font-semibold mb-6">Valide seu CPF</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">CPF</label>
+                    <input
+                        type="text"
+                        id="cpf-input"
+                        placeholder="000.000.000-00"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        maxlength="14"
+                    />
+                </div>
+
+                <div id="erro-validacao" class="rounded-md bg-red-50 p-4 hidden">
+                    <p class="text-sm font-medium text-red-800" id="erro-mensagem-validacao"></p>
+                </div>
+
+                <button
+                    onclick="validarCPF()"
+                    class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-semibold"
+                >
+                    Validar CPF
+                </button>
+            </div>
+        </div>
+
+        <!-- Etapa 2: Escolher Candidato -->
+        <div id="etapa-votacao" class="hidden">
+            <div class="bg-white rounded-lg shadow-lg p-8 max-w-2xl mx-auto mb-6">
+                <h2 class="text-2xl font-semibold mb-2">Bem-vindo(a)!</h2>
+                <p class="text-gray-600 mb-6" id="nome-eleitor"></p>
+
+                <h3 class="text-xl font-semibold mb-6">Escolha o número do candidato:</h3>
+
+                <div id="candidatos-list" class="grid grid-cols-2 gap-4 mb-6">
+                    <!-- Candidatos serão carregados aqui -->
+                </div>
+
+                <button
+                    onclick="voltar()"
+                    class="w-full bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 font-semibold"
+                >
+                    Voltar
+                </button>
+            </div>
+
+            <div id="erro-votacao" class="rounded-md bg-red-50 p-4 max-w-2xl mx-auto hidden">
+                <p class="text-sm font-medium text-red-800" id="erro-mensagem-votacao"></p>
+            </div>
+        </div>
+
+        <!-- Etapa 3: Confirmação de Voto -->
+        <div id="etapa-confirmacao" class="hidden">
+            <div class="bg-white rounded-lg shadow-lg p-8 max-w-2xl mx-auto">
+                <div class="text-center">
+                    <div class="mb-6">
+                        <h2 class="text-3xl font-bold text-gray-900 mb-2">Confirme seu voto</h2>
+                        <p class="text-gray-600">Número: <span class="text-2xl font-bold text-blue-600" id="numero-confirmacao"></span></p>
+                        <p class="text-gray-600">Candidato: <span class="text-lg font-semibold" id="nome-confirmacao"></span></p>
+                    </div>
+
+                    <p class="text-sm text-gray-500 mb-6 italic">
+                        "O voto é secreto. Ninguém saberá em quem você votou."
+                    </p>
+
+                    <div class="flex space-x-4">
+                        <button
+                            onclick="cancelarVoto()"
+                            class="flex-1 bg-gray-300 text-gray-700 py-3 rounded-lg hover:bg-gray-400 font-semibold"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            onclick="confirmarVoto()"
+                            class="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 font-semibold"
+                        >
+                            Confirmar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Etapa 4: Sucesso -->
+        <div id="etapa-sucesso" class="hidden">
+            <div class="bg-white rounded-lg shadow-lg p-8 max-w-2xl mx-auto text-center">
+                <div class="mb-6">
+                    <div class="text-6xl mb-4">✓</div>
+                    <h2 class="text-3xl font-bold text-green-600 mb-2">Voto Computado!</h2>
+                    <p class="text-gray-600 mb-4">Seu voto foi registrado com sucesso.</p>
+                </div>
+
+                <p class="text-sm text-gray-500 mb-6">
+                    Você pode fechar esta página ou aguardar a redireção automática.
+                </p>
+
+                <button
+                    onclick="novaVotacao()"
+                    class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-semibold"
+                >
+                    Nova Votação
+                </button>
+            </div>
+        </div>
+
+        <!-- Footer -->
+       
+    </div>
+
+    <script>
+         const API_URL = 'http://191.252.202.20:5005/api';
+        let cpfValidado = null;
+        let nomeEleitor = null;
+        let candidatoSelecionado = null;
+        let candidatos = [];
+
+        // Formata CPF enquanto digita
+        document.getElementById('cpf-input').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length <= 11) {
+                if (value.length <= 3) {
+                    e.target.value = value;
+                } else if (value.length <= 6) {
+                    e.target.value = value.slice(0, 3) + '.' + value.slice(3);
+                } else {
+                    e.target.value = value.slice(0, 3) + '.' + value.slice(3, 6) + '.' + value.slice(6, 9) + '-' + value.slice(9);
+                }
+            } else {
+                e.target.value = value.slice(0, 11);
+            }
+        });
+
+        async function validarCPF() {
+            const cpf = document.getElementById('cpf-input').value;
+            const erroDiv = document.getElementById('erro-validacao');
+            const erroMsg = document.getElementById('erro-mensagem-validacao');
+
+            if (!cpf) {
+                erroMsg.textContent = 'CPF é obrigatório';
+                erroDiv.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                const response = await axios.post(`${API_URL}/votacao/validar-cpf`, { cpf });
+
+                if (response.data.valid) {
+                    cpfValidado = cpf;
+                    nomeEleitor = response.data.nomeEleitor;
+                    erroDiv.classList.add('hidden');
+                    
+                    // Carrega candidatos
+                    await carregarCandidatos();
+                    
+                    // Muda para etapa de votação
+                    document.getElementById('etapa-validacao').classList.add('hidden');
+                    document.getElementById('etapa-votacao').classList.remove('hidden');
+                    document.getElementById('nome-eleitor').textContent = `Bem-vindo(a), ${nomeEleitor}!`;
+                } else {
+                    erroMsg.textContent = response.data.mensagem || 'CPF inválido';
+                    erroDiv.classList.remove('hidden');
+                }
+            } catch (error) {
+                erroMsg.textContent = error.response?.data?.erro || 'Erro ao validar CPF';
+                erroDiv.classList.remove('hidden');
+            }
+        }
+
+        async function carregarCandidatos() {
+            try {
+                const response = await axios.get(`${API_URL}/votacao/candidatos`);
+                candidatos = response.data;
+                const listDiv = document.getElementById('candidatos-list');
+                
+                listDiv.innerHTML = candidatos.map(c => `
+                    <button
+                        onclick="selecionarCandidato('${c.id}', ${c.numero}, '${c.nome}')"
+                        class="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-300 rounded-lg p-6 hover:shadow-lg hover:border-blue-500 transition text-center"
+                    >
+                        ${c.fotoUrl ? `<img src="${c.fotoUrl}" alt="Foto do candidato" class="mx-auto h-24 w-24 object-cover rounded-full mb-4" />` : ''}
+                        <p class="text-3xl font-bold text-blue-600">${c.numero}</p>
+                        <p class="text-sm font-semibold text-gray-900 mt-2">${c.nome}</p>
+                        ${c.descricao ? `<p class="text-xs text-gray-600 mt-1">${c.descricao}</p>` : ''}
+                    </button>
+                `).join('');
+            } catch (error) {
+                console.error('Erro ao carregar candidatos:', error);
+            }
+        }
+
+        function selecionarCandidato(id, numero, nome) {
+            candidatoSelecionado = { id, numero, nome };
+            document.getElementById('numero-confirmacao').textContent = numero;
+            document.getElementById('nome-confirmacao').textContent = nome;
+            
+            document.getElementById('etapa-votacao').classList.add('hidden');
+            document.getElementById('etapa-confirmacao').classList.remove('hidden');
+            document.getElementById('erro-votacao').classList.add('hidden');
+        }
+
+        async function confirmarVoto() {
+            if (!candidatoSelecionado) return;
+
+            try {
+                const response = await axios.post(`${API_URL}/votacao/votar`, {
+                    cpf: cpfValidado,
+                    candidatoId: candidatoSelecionado.id
+                });
+
+                if (response.data.sucesso) {
+                    document.getElementById('etapa-confirmacao').classList.add('hidden');
+                    document.getElementById('etapa-sucesso').classList.remove('hidden');
+                    
+                    // Redireciona após 5 segundos
+                    setTimeout(novaVotacao, 5000);
+                } else {
+                    mostrarErroVotacao(response.data.mensagem);
+                }
+            } catch (error) {
+                mostrarErroVotacao(error.response?.data?.erro || 'Erro ao registrar voto');
+            }
+        }
+
+        function mostrarErroVotacao(mensagem) {
+            const erroDiv = document.getElementById('erro-votacao');
+            document.getElementById('erro-mensagem-votacao').textContent = mensagem;
+            erroDiv.classList.remove('hidden');
+        }
+
+        function cancelarVoto() {
+            candidatoSelecionado = null;
+            document.getElementById('etapa-confirmacao').classList.add('hidden');
+            document.getElementById('etapa-votacao').classList.remove('hidden');
+        }
+
+        function voltar() {
+            cpfValidado = null;
+            nomeEleitor = null;
+            document.getElementById('etapa-votacao').classList.add('hidden');
+            document.getElementById('etapa-validacao').classList.remove('hidden');
+            document.getElementById('cpf-input').value = '';
+        }
+
+        function novaVotacao() {
+            cpfValidado = null;
+            nomeEleitor = null;
+            candidatoSelecionado = null;
+            document.getElementById('etapa-sucesso').classList.add('hidden');
+            document.getElementById('etapa-validacao').classList.remove('hidden');
+            document.getElementById('cpf-input').value = '';
+            document.getElementById('cpf-input').focus();
+        }
+    </script>
+</body>
+</html>
